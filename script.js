@@ -58,6 +58,10 @@ function initDOM() {
     lampStatusText: document.getElementById('lampStatusText'),
     activeColorText:document.getElementById('activeColorText'),
     lastUpdate:     document.getElementById('lastUpdate'),
+    btnSchedule:    document.getElementById('btnSchedule'),
+    scheduleLabel:  document.getElementById('scheduleLabel'),
+    statusItemSchedule: document.getElementById('statusItemSchedule'),
+    scheduleInfo:   document.getElementById('scheduleInfo'),
     espBadge:       document.getElementById('espBadge'),
     ambientRing:    document.getElementById('ambientRing'),
     colorIndicator: document.getElementById('colorIndicator'),
@@ -138,21 +142,45 @@ async function sendControl(action) {
 
     if (result.success && result.data) {
       updateUI(result.data);
-      showToast(
-        action === 'toggle'
-          ? `Power ${result.data.power ? 'ON' : 'OFF'}`
-          : `Warna → ${COLOR_LABELS[result.data.color] || 'Unknown'}`,
-        'success'
-      );
     } else {
-      showToast(result.error || 'Gagal mengirim perintah', 'error');
+      showToast(result.error || 'Gagal mengubah status', 'error');
     }
   } catch (error) {
     console.error('[CONTROL] Error:', error.message);
-    showToast('Gagal menghubungi server!', 'error');
+    showToast('Koneksi terputus', 'error');
   } finally {
     isRequestPending = false;
     if (targetBtn) targetBtn.classList.remove('is-loading');
+  }
+}
+
+/**
+ * Kirim jadwal ke Backend (POST /api/schedule)
+ */
+async function sendSchedule(onTime, offTime) {
+  try {
+    const response = await fetch(`${API_BASE}/api/schedule`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY
+      },
+      body: JSON.stringify({ 
+        on_time: onTime, 
+        off_time: offTime, 
+        timezone_offset: new Date().getTimezoneOffset()
+      })
+    });
+
+    const result = await response.json();
+    if (result.success) {
+      showToast(result.message, 'success');
+      if (result.data) updateUI(result.data);
+    } else {
+      showToast(result.error || 'Gagal mengatur jadwal', 'error');
+    }
+  } catch (error) {
+    showToast('Koneksi terputus', 'error');
   }
 }
 
@@ -245,6 +273,21 @@ function updateUI(data) {
       ? formatTimestamp(new Date(data.lastUpdate))
       : '—';
   }
+
+  // === Schedule Info ===
+  if (dom.statusItemSchedule && dom.scheduleInfo) {
+    if (data.schedule) {
+      dom.statusItemSchedule.style.display = 'flex';
+      let info = [];
+      if (data.schedule.on_time) info.push(`ON: ${data.schedule.on_time}`);
+      if (data.schedule.off_time) info.push(`OFF: ${data.schedule.off_time}`);
+      dom.scheduleInfo.textContent = info.join(' | ');
+      currentState.schedule = data.schedule;
+    } else {
+      dom.statusItemSchedule.style.display = 'none';
+      currentState.schedule = null;
+    }
+  }
 }
 
 /**
@@ -335,54 +378,62 @@ function showToast(message, type = 'success') {
 
 // ==================== PARTICLE GENERATOR ====================
 
-/**
- * Generate floating particles di background
- */
-function generateParticles() {
-  const container = dom.particles;
-  if (!container) return;
-
-  const PARTICLE_COUNT = 15;
-  const colors = ['var(--neon-cyan)', 'var(--neon-magenta)', 'var(--neon-violet)'];
-
-  for (let i = 0; i < PARTICLE_COUNT; i++) {
-    const particle = document.createElement('div');
-    particle.className = 'particle';
-
-    const size = Math.random() * 2 + 1;
-    const left = Math.random() * 100;
-    const duration = Math.random() * 15 + 15;
-    const delay = Math.random() * 20;
+function createParticles() {
+  if (!dom.particles) return;
+  dom.particles.innerHTML = '';
+  
+  const colors = ['var(--neon-cyan)', 'var(--neon-magenta)', 'var(--neon-amber)'];
+  const count = 15;
+  
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    
+    // Randomize
+    const size = Math.random() * 4 + 2;
+    const x = Math.random() * 100;
+    const y = Math.random() * 100;
+    const duration = Math.random() * 20 + 10;
+    const delay = Math.random() * 5;
     const color = colors[Math.floor(Math.random() * colors.length)];
-
-    particle.style.cssText = `
-      width: ${size}px;
-      height: ${size}px;
-      left: ${left}%;
-      background: ${color};
-      animation-duration: ${duration}s;
-      animation-delay: ${delay}s;
-      box-shadow: 0 0 ${size * 3}px ${color};
-    `;
-
-    container.appendChild(particle);
+    
+    p.style.width = `${size}px`;
+    p.style.height = `${size}px`;
+    p.style.left = `${x}%`;
+    p.style.top = `${y}%`;
+    p.style.backgroundColor = color;
+    p.style.boxShadow = `0 0 ${size * 2}px ${color}`;
+    p.style.animationDuration = `${duration}s`;
+    p.style.animationDelay = `${delay}s`;
+    
+    dom.particles.appendChild(p);
   }
 }
 
 // ==================== EVENT HANDLERS ====================
 
-/**
- * Toggle power lampu
- */
-function togglePower() {
-  sendControl('toggle');
-}
+function handleScheduleClick() {
+  if (!serverOnline) {
+    showToast('Server offline', 'error');
+    return;
+  }
+  
+  const onTime = prompt('Jam berapa lampu NYALA otomatis?\nFormat: HH:MM (contoh: 18:00)\nKosongkan jika tidak perlu.', currentState.schedule?.on_time || '');
+  if (onTime === null) return; // Cancelled
 
-/**
- * Ganti warna lampu
- */
-function changeColor() {
-  sendControl('color');
+  const offTime = prompt('Jam berapa lampu MATI otomatis?\nFormat: HH:MM (contoh: 06:00)\nKosongkan jika tidak perlu.', currentState.schedule?.off_time || '');
+  if (offTime === null) return; // Cancelled
+  
+  if (onTime === '' && offTime === '') {
+    sendSchedule(null, null);
+    return;
+  }
+
+  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  if (onTime && !timeRegex.test(onTime)) return alert('Format waktu NYALA salah. Gunakan HH:MM (contoh: 18:00)');
+  if (offTime && !timeRegex.test(offTime)) return alert('Format waktu MATI salah. Gunakan HH:MM (contoh: 06:00)');
+
+  sendSchedule(onTime, offTime);
 }
 
 // ==================== POLLING ====================
@@ -426,15 +477,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Attach event listeners (instead of inline onclick)
   if (dom.btnPower) {
-    dom.btnPower.addEventListener('click', togglePower);
+    dom.btnPower.addEventListener('click', () => sendControl('toggle'));
   }
   if (dom.btnColor) {
-    dom.btnColor.addEventListener('click', changeColor);
+    dom.btnColor.addEventListener('click', () => sendControl('color'));
+  }
+  
+  if (dom.btnSchedule) {
+    dom.btnSchedule.addEventListener('click', handleScheduleClick);
   }
 
   // Generate background particles
-  generateParticles();
+  createParticles();
 
+  // Handle visibility API (pause polling saat tab hidden)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopPolling();
+    } else {
+      // Langsung fetch sekali saat user kembali ke tab, lalu lanjut polling
+      fetchStatus();
+      startPolling();
+    }
+  });
+
+  // Init PWA Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(err => {
+        console.log('[PWA] SW registration failed:', err);
+      });
+    });
+  }
+
+  // Initial fetch
+  fetchStatus();
   // Start polling
   startPolling();
 });
@@ -442,14 +519,4 @@ document.addEventListener('DOMContentLoaded', () => {
 // Hentikan polling saat halaman ditutup
 window.addEventListener('beforeunload', () => {
   stopPolling();
-});
-
-// Pause/resume polling berdasarkan visibility (tab switch)
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    stopPolling();
-  } else {
-    // startPolling() already calls stopPolling() internally
-    startPolling();
-  }
 });

@@ -1020,3 +1020,35 @@ body {
 
   .info-item__label { display: block; }
 }
+
+/* ==================== SCHEDULE BUTTON (MINIMALIST) ==================== */
+.btn--schedule .btn__ring--schedule {
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+.btn--schedule .btn__inner--schedule {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+  color: var(--text-muted);
+}
+
+.btn--schedule:hover .btn__ring--schedule {
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+.btn--schedule:hover .btn__inner--schedule {
+  color: var(--text-main);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+}
+
+.btn--schedule:active {
+  transform: scale(0.95);
+}
+
+.status-item__value--schedule {
+  color: var(--neon-amber);
+  font-weight: 600;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Elysian Magic Home",
+  "short_name": "MagicHome",
+  "description": "Smart Light Controller powered by ESP32",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#06060d",
+  "theme_color": "#06060d",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

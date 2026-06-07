@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Elysian Magic Home — Kontrol lampu IoT secara real-time dari browser. Smart Light Controller powered by ESP32.">
+  <meta name="theme-color" content="#06060d">
+
+  <title>Elysian Magic Home — Smart Light Controller</title>
+
+  <!-- Favicon (inline SVG as data URI) -->
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>">
+
+  <!-- Google Fonts: Orbitron (futuristic display) + Inter (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- ==================== BACKGROUND LAYERS ==================== -->
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+  <div class="bg-particles" aria-hidden="true" id="particles"></div>
+
+  <!-- ==================== MAIN CONTAINER ==================== -->
+  <main class="container">
+
+    <!-- HEADER WITH LOGO -->
+    <header class="header" id="appHeader">
+      <div class="header__logo">
+        <div class="header__logo-ring">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M9 18h6" />
+            <path d="M10 22h4" />
+            <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
+          </svg>
+        </div>
+      </div>
+      <h1 class="header__title">
+        <span class="header__title-line1">Elysian</span>
+        <span class="header__title-line2">Magic Home</span>
+      </h1>
+      <p class="header__subtitle">Smart Light Controller</p>
+      <div class="header__badge-row">
+        <span class="header__version" id="versionBadge">V-0.0.1</span>
+        <span class="header__badge header__badge--esp" id="espBadge">
+          <span class="header__badge-dot"></span>
+          ESP32
+        </span>
+      </div>
+    </header>
+
+    <!-- AMBIENT LIGHT VISUALIZER -->
+    <section class="ambient-ring" id="ambientRing" aria-hidden="true">
+      <div class="ambient-ring__outer"></div>
+      <div class="ambient-ring__inner"></div>
+      <div class="ambient-ring__core" id="ambientCore">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>
+          <path d="M9 18h6"/>
+        </svg>
+      </div>
+    </section>
+
+    <!-- STATUS CONNECTION CARD -->
+    <section class="card card--status" id="statusCard">
+      <div class="card__header">
+        <div class="card__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+            <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+            <circle cx="12" cy="20" r="1" />
+          </svg>
+        </div>
+        <h2 class="card__title">Status Koneksi</h2>
+        <div class="card__header-indicator" id="serverIndicator">
+          <span class="status-dot status-dot--offline"></span>
+        </div>
+      </div>
+      <div class="card__body">
+        <div class="status-grid">
+          <div class="status-item" id="statusItemEsp">
+            <span class="status-item__label">ESP32 Device</span>
+            <span class="status-item__value" id="espStatus">
+              <span class="status-dot status-dot--offline"></span>
+              <span id="espStatusText">Menunggu...</span>
+            </span>
+          </div>
+          <div class="status-item" id="statusItemLamp">
+            <span class="status-item__label">Status Lampu</span>
+            <span class="status-item__value" id="lampStatus">
+              <span class="status-dot status-dot--offline"></span>
+              <span id="lampStatusText">OFF</span>
+            </span>
+          </div>
+          <div class="status-item" id="statusItemColor">
+            <span class="status-item__label">Warna Aktif</span>
+            <span class="status-item__value status-item__value--color" id="activeColor">
+              <span class="color-indicator" id="colorIndicator"></span>
+              <span id="activeColorText">—</span>
+            </span>
+          </div>
+          <div class="status-item" id="statusItemTime">
+            <span class="status-item__label">Terakhir Update</span>
+            <span class="status-item__value status-item__value--small" id="lastUpdate">—</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTROL PANEL -->
+    <section class="card card--controls" id="controlPanel">
+      <div class="card__header">
+        <div class="card__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+          </svg>
+        </div>
+        <h2 class="card__title">Control Panel</h2>
+      </div>
+      <div class="card__body controls-body">
+
+        <!-- POWER BUTTON -->
+        <div class="control-group" id="powerGroup">
+          <button class="btn btn--power" id="btnPower" aria-label="Toggle Power On/Off">
+            <div class="btn__glow" id="powerGlow"></div>
+            <div class="btn__ring"></div>
+            <div class="btn__inner">
+              <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+                <line x1="12" y1="2" x2="12" y2="12" />
+              </svg>
+            </div>
+          </button>
+          <span class="control-label" id="powerLabel">POWER OFF</span>
+        </div>
+
+        <!-- DIVIDER -->
+        <div class="controls-divider" aria-hidden="true">
+          <div class="controls-divider__line"></div>
+          <div class="controls-divider__dot"></div>
+          <div class="controls-divider__line"></div>
+        </div>
+
+        <!-- COLOR BUTTON -->
+        <div class="control-group" id="colorGroup">
+          <button class="btn btn--color" id="btnColor" aria-label="Ganti Warna Lampu">
+            <div class="btn__glow btn__glow--color" id="colorGlow"></div>
+            <div class="btn__ring btn__ring--color"></div>
+            <div class="btn__inner btn__inner--color">
+              <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="13.5" cy="6.5" r="2.5" />
+                <circle cx="17.5" cy="10.5" r="2.5" />
+                <circle cx="8.5" cy="7.5" r="2.5" />
+                <circle cx="6.5" cy="12.5" r="2.5" />
+                <path d="M12 22a7 7 0 0 0 5-11.95A7 7 0 0 0 5 12a7 7 0 0 0 7 10z" />
+              </svg>
+            </div>
+          </button>
+          <span class="control-label" id="colorLabel">GANTI WARNA</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- DEVICE INFO CARD -->
+    <section class="card card--info" id="infoCard">
+      <div class="card__header">
+        <div class="card__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+        </div>
+        <h2 class="card__title">Device Info</h2>
+      </div>
+      <div class="card__body">
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-item__icon">📡</span>
+            <span class="info-item__label">Device</span>
+            <span class="info-item__value">ESP32_ALAT_01</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__icon">⚡</span>
+            <span class="info-item__label">Relay</span>
+            <span class="info-item__value">2 Channel</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__icon">🔔</span>
+            <span class="info-item__label">Buzzer</span>
+            <span class="info-item__value">Pasif (D21)</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__icon">🔘</span>
+            <span class="info-item__label">Buttons</span>
+            <span class="info-item__value">2 Push</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer" id="appFooter">
+      <div class="footer__brand">
+        <span class="footer__symbol">✦</span>
+        <span>Elysian Magic Home</span>
+      </div>
+      <p class="footer__copyright">&copy; 2026 — All Rights Reserved</p>
+      <p class="footer__tech">ESP32 · Node.js · HTML/CSS/JS</p>
+    </footer>
+
+  </main>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>

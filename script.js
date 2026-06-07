@@ -54,9 +54,6 @@ function initDOM() {
     btnColor:       document.getElementById('btnColor'),
     powerLabel:     document.getElementById('powerLabel'),
     colorLabel:     document.getElementById('colorLabel'),
-    espStatusText:  document.getElementById('espStatusText'),
-    lampStatusText: document.getElementById('lampStatusText'),
-    activeColorText:document.getElementById('activeColorText'),
     lastUpdate:     document.getElementById('lastUpdate'),
     btnSchedule:    document.getElementById('btnSchedule'),
     scheduleLabel:  document.getElementById('scheduleLabel'),
@@ -64,6 +61,7 @@ function initDOM() {
     scheduleInfo:   document.getElementById('scheduleInfo'),
     tabControl:     document.getElementById('tabControl'),
     tabSchedule:    document.getElementById('tabSchedule'),
+    tabPillBg:      document.getElementById('tabPillBg'),
     panelControl:   document.getElementById('panelControl'),
     panelSchedule:  document.getElementById('panelSchedule'),
     inputOnTime:    document.getElementById('inputOnTime'),
@@ -78,8 +76,6 @@ function initDOM() {
     particles:      document.getElementById('particles'),
 
     // Queried elements (could be null if HTML changes)
-    espStatusDot:   document.querySelector('#espStatus .status-dot'),
-    lampStatusDot:  document.querySelector('#lampStatus .status-dot'),
     serverDot:      null  // will be set after serverIndicator is found
   };
 
@@ -222,16 +218,6 @@ function updateUI(data) {
     dom.powerLabel.style.color = data.power ? 'var(--neon-cyan)' : '';
   }
 
-  if (dom.lampStatusText) {
-    dom.lampStatusText.textContent = data.power ? 'ON' : 'OFF';
-  }
-
-  if (dom.lampStatusDot) {
-    dom.lampStatusDot.className = data.power
-      ? 'status-dot status-dot--online'
-      : 'status-dot status-dot--offline';
-  }
-
   // === Color Button State ===
   if (dom.btnColor) {
     COLOR_CLASSES.forEach(cls => dom.btnColor.classList.remove(cls));
@@ -242,25 +228,10 @@ function updateUI(data) {
     dom.colorLabel.textContent = COLOR_LABELS[colorIndex];
   }
 
-  if (dom.activeColorText) {
-    dom.activeColorText.textContent = COLOR_LABELS[colorIndex];
-  }
-
   // === Color Indicator ===
   if (dom.colorIndicator) {
     COLOR_CLASSES.forEach(cls => dom.colorIndicator.classList.remove(cls));
     dom.colorIndicator.classList.add(COLOR_CLASSES[colorIndex]);
-  }
-
-  // === ESP32 Connection Status ===
-  if (dom.espStatusText) {
-    dom.espStatusText.textContent = data.espConnected ? 'Online' : 'Offline';
-  }
-
-  if (dom.espStatusDot) {
-    dom.espStatusDot.className = data.espConnected
-      ? 'status-dot status-dot--online'
-      : 'status-dot status-dot--offline';
   }
 
   // === ESP Badge in Header ===
@@ -329,10 +300,6 @@ function setServerOnline(online) {
  * Set UI ke state offline (ketika backend tidak bisa dihubungi)
  */
 function setOfflineUI() {
-  if (dom.espStatusText)  dom.espStatusText.textContent = 'Offline';
-  if (dom.espStatusDot)   dom.espStatusDot.className = 'status-dot status-dot--offline';
-  if (dom.lampStatusText) dom.lampStatusText.textContent = 'N/A';
-  if (dom.lampStatusDot)  dom.lampStatusDot.className = 'status-dot status-dot--offline';
   if (dom.lastUpdate)     dom.lastUpdate.textContent = 'Server tidak terhubung';
 
   if (dom.espBadge)       dom.espBadge.classList.remove('is-online');
@@ -421,6 +388,10 @@ function createParticles() {
 // ==================== EVENT HANDLERS & TABS ====================
 
 function switchTab(tabId) {
+  if (dom.tabPillBg && dom.tabPillBg.parentElement) {
+    dom.tabPillBg.parentElement.setAttribute('data-active', tabId);
+  }
+
   if (tabId === 'control') {
     dom.tabControl.classList.add('is-active');
     dom.tabSchedule.classList.remove('is-active');

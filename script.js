@@ -62,6 +62,14 @@ function initDOM() {
     scheduleLabel:  document.getElementById('scheduleLabel'),
     statusItemSchedule: document.getElementById('statusItemSchedule'),
     scheduleInfo:   document.getElementById('scheduleInfo'),
+    tabControl:     document.getElementById('tabControl'),
+    tabSchedule:    document.getElementById('tabSchedule'),
+    panelControl:   document.getElementById('panelControl'),
+    panelSchedule:  document.getElementById('panelSchedule'),
+    inputOnTime:    document.getElementById('inputOnTime'),
+    inputOffTime:   document.getElementById('inputOffTime'),
+    btnSaveSchedule:document.getElementById('btnSaveSchedule'),
+    btnClearSchedule:document.getElementById('btnClearSchedule'),
     espBadge:       document.getElementById('espBadge'),
     ambientRing:    document.getElementById('ambientRing'),
     colorIndicator: document.getElementById('colorIndicator'),
@@ -410,30 +418,56 @@ function createParticles() {
   }
 }
 
-// ==================== EVENT HANDLERS ====================
+// ==================== EVENT HANDLERS & TABS ====================
 
-function handleScheduleClick() {
+function switchTab(tabId) {
+  if (tabId === 'control') {
+    dom.tabControl.classList.add('is-active');
+    dom.tabSchedule.classList.remove('is-active');
+    dom.panelControl.classList.add('is-active');
+    dom.panelSchedule.classList.remove('is-active');
+  } else if (tabId === 'schedule') {
+    dom.tabSchedule.classList.add('is-active');
+    dom.tabControl.classList.remove('is-active');
+    dom.panelSchedule.classList.add('is-active');
+    dom.panelControl.classList.remove('is-active');
+    populateScheduleForm();
+  }
+}
+
+function populateScheduleForm() {
   if (!serverOnline) {
     showToast('Server offline', 'error');
     return;
   }
   
-  const onTime = prompt('Jam berapa lampu NYALA otomatis?\nFormat: HH:MM (contoh: 18:00)\nKosongkan jika tidak perlu.', currentState.schedule?.on_time || '');
-  if (onTime === null) return; // Cancelled
-
-  const offTime = prompt('Jam berapa lampu MATI otomatis?\nFormat: HH:MM (contoh: 06:00)\nKosongkan jika tidak perlu.', currentState.schedule?.off_time || '');
-  if (offTime === null) return; // Cancelled
-  
-  if (onTime === '' && offTime === '') {
-    sendSchedule(null, null);
-    return;
+  if (currentState.schedule) {
+    dom.inputOnTime.value = currentState.schedule.on_time || '';
+    dom.inputOffTime.value = currentState.schedule.off_time || '';
+  } else {
+    dom.inputOnTime.value = '';
+    dom.inputOffTime.value = '';
   }
+}
 
-  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-  if (onTime && !timeRegex.test(onTime)) return alert('Format waktu NYALA salah. Gunakan HH:MM (contoh: 18:00)');
-  if (offTime && !timeRegex.test(offTime)) return alert('Format waktu MATI salah. Gunakan HH:MM (contoh: 06:00)');
+function saveSchedule() {
+  const onTime = dom.inputOnTime.value;
+  const offTime = dom.inputOffTime.value;
+  
+  if (!onTime && !offTime) {
+    sendSchedule(null, null);
+  } else {
+    sendSchedule(onTime, offTime);
+  }
+  showToast('Jadwal disimpan', 'success');
+  switchTab('control'); // Kembali ke tab kontrol setelah simpan
+}
 
-  sendSchedule(onTime, offTime);
+function clearSchedule() {
+  sendSchedule(null, null);
+  dom.inputOnTime.value = '';
+  dom.inputOffTime.value = '';
+  showToast('Jadwal dihapus', 'success');
 }
 
 // ==================== POLLING ====================
@@ -475,7 +509,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize DOM references (safe — all elements exist now)
   initDOM();
 
-  // Attach event listeners (instead of inline onclick)
   if (dom.btnPower) {
     dom.btnPower.addEventListener('click', () => sendControl('toggle'));
   }
@@ -483,8 +516,20 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.btnColor.addEventListener('click', () => sendControl('color'));
   }
   
-  if (dom.btnSchedule) {
-    dom.btnSchedule.addEventListener('click', handleScheduleClick);
+  // Tab Event Listeners
+  if (dom.tabControl) {
+    dom.tabControl.addEventListener('click', () => switchTab('control'));
+  }
+  if (dom.tabSchedule) {
+    dom.tabSchedule.addEventListener('click', () => switchTab('schedule'));
+  }
+
+  // Schedule Panel Event Listeners
+  if (dom.btnSaveSchedule) {
+    dom.btnSaveSchedule.addEventListener('click', saveSchedule);
+  }
+  if (dom.btnClearSchedule) {
+    dom.btnClearSchedule.addEventListener('click', clearSchedule);
   }
 
   // Generate background particles
